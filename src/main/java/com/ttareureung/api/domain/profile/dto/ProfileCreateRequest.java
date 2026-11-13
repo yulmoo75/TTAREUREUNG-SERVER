@@ -34,7 +34,10 @@ public record ProfileCreateRequest(
 
         @NotNull(message = "프로필 역할을 선택해주세요.")
         @Schema(example = "SENIOR")
-        ProfileRole role
+        ProfileRole role,
+
+        @Schema(example = "1", description = "시니어 생성 시에만 사용. 넣으면 해당 보호자와 바로 연결")
+        Long guardianProfileId
 ) {
     public ProfileCreateRequest {
         name = name == null ? null : name.strip();

@@ -16,6 +16,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -41,11 +42,12 @@ public class ProfileController {
         this.profileService = profileService;
     }
 
-    @Operation(summary = "프로필 생성", description = "로그인한 계정에 보호자 또는 시니어 프로필을 추가합니다. 회원가입 후 첫 보호자 등록과 시니어 등록 모두 이 API를 사용하며, 시니어는 보호자 프로필이 있어야 만들 수 있습니다.")
+    @Operation(summary = "프로필 생성", description = "로그인한 계정에 보호자 또는 시니어 프로필을 추가합니다. 회원가입 후 첫 보호자 등록과 시니어 등록 모두 이 API를 사용하며, 시니어는 보호자 프로필이 있어야 만들 수 있습니다. 시니어 생성 시 guardianProfileId를 넣으면 그 보호자와 바로 연결됩니다.")
     @ApiResponse(responseCode = "201", description = "생성 성공")
-    @ApiResponse(responseCode = "400", description = "입력값 오류", content = @Content(schema = @Schema(implementation = BaseResponse.class)))
+    @ApiResponse(responseCode = "400", description = "입력값 오류 또는 guardianProfileId 역할 불일치 (PROFILE_003)", content = @Content(schema = @Schema(implementation = BaseResponse.class)))
     @ApiResponse(responseCode = "401", description = "Access Token 누락·만료", content = @Content(schema = @Schema(implementation = BaseResponse.class)))
     @ApiResponse(responseCode = "403", description = "비활성 계정 (AUTH_005)", content = @Content(schema = @Schema(implementation = BaseResponse.class)))
+    @ApiResponse(responseCode = "404", description = "guardianProfileId가 없는 프로필 또는 다른 계정의 프로필 (PROFILE_002)", content = @Content(schema = @Schema(implementation = BaseResponse.class)))
     @ApiResponse(responseCode = "409", description = "보호자 프로필 없이 시니어 생성 (PROFILE_001)", content = @Content(schema = @Schema(implementation = BaseResponse.class)))
     @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<BaseResponse<ProfileResponse>> create(@AuthenticationPrincipal Jwt jwt,
@@ -84,6 +86,19 @@ public class ProfileController {
                                                                 @PathVariable Long profileId,
                                                                 @Valid @RequestBody ProfileUpdateRequest request) {
         return ResponseEntity.ok(BaseResponse.success(profileService.update(accountId(jwt), profileId, request)));
+    }
+
+    @Operation(summary = "프로필 삭제", description = "프로필과 그 프로필의 보호자-시니어 연결을 함께 삭제합니다. 시니어가 있는 계정의 마지막 보호자는 삭제할 수 없습니다.")
+    @ApiResponse(responseCode = "200", description = "삭제 성공")
+    @ApiResponse(responseCode = "400", description = "profileId 형식 오류", content = @Content(schema = @Schema(implementation = BaseResponse.class)))
+    @ApiResponse(responseCode = "401", description = "Access Token 누락·만료", content = @Content(schema = @Schema(implementation = BaseResponse.class)))
+    @ApiResponse(responseCode = "403", description = "비활성 계정 (AUTH_005)", content = @Content(schema = @Schema(implementation = BaseResponse.class)))
+    @ApiResponse(responseCode = "404", description = "없는 프로필 또는 다른 계정의 프로필 (PROFILE_002)", content = @Content(schema = @Schema(implementation = BaseResponse.class)))
+    @ApiResponse(responseCode = "409", description = "시니어가 있는 계정의 마지막 보호자 (PROFILE_006)", content = @Content(schema = @Schema(implementation = BaseResponse.class)))
+    @DeleteMapping("/{profileId}")
+    public ResponseEntity<BaseResponse<Void>> delete(@AuthenticationPrincipal Jwt jwt, @PathVariable Long profileId) {
+        profileService.delete(accountId(jwt), profileId);
+        return ResponseEntity.ok(BaseResponse.successWithoutData());
     }
 
     // subject 숫자 여부는 JwtConfig에서 검증 완료

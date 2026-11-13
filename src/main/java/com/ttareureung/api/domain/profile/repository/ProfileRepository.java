@@ -14,5 +14,7 @@ public interface ProfileRepository extends JpaRepository<Profile, Long> {
 
     boolean existsByAccountIdAndRole(Long accountId, ProfileRole role);
 
+    long countByAccountIdAndRole(Long accountId, ProfileRole role);
+
     Optional<Profile> findByIdAndAccountId(Long id, Long accountId);
 }
