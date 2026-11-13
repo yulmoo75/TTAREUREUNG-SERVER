@@ -1,6 +1,6 @@
 package com.ttareureung.api.domain.medication.entity;
 
-public class MedicationStatus {
+public enum MedicationStatus {
 
     PENDING, TAKEN, MISSED
 

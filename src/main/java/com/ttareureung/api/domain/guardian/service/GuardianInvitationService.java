@@ -7,14 +7,18 @@ import com.ttareureung.api.domain.guardian.dto.InvitationResponse;
 import com.ttareureung.api.domain.guardian.entity.GuardianInvitation;
 import com.ttareureung.api.domain.guardian.entity.InvitationStatus;
 import com.ttareureung.api.domain.guardian.exception.GuardianErrorCode;
+import com.ttareureung.api.domain.guardian.repository.GuardianInvitationRepository;
 import com.ttareureung.api.domain.guardian.repository.GuardianSeniorQueryRepository;
 import com.ttareureung.api.domain.profile.entity.GuardianSenior;
+import com.ttareureung.api.domain.profile.entity.GuardianSeniorStatus;
 import com.ttareureung.api.domain.profile.entity.Profile;
 import com.ttareureung.api.domain.profile.entity.ProfileRole;
 import com.ttareureung.api.domain.profile.exception.ProfileErrorCode;
 import com.ttareureung.api.domain.profile.repository.ProfileRepository;
+import com.ttareureung.api.global.exception.CustomException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Objects;
 import java.util.Set;
@@ -33,20 +37,22 @@ public class GuardianInvitationService {
     public InvitationResponse invite(Long accountId, InvitationRequest req) {
         Profile senior = seniorAccessValidator.requireSenior(accountId, req.seniorProfileId());
 
-        // 이미 연결된 보호자의 번호는 제외
         Set<String> linkedPhones = guardianSeniorQueryRepository
-                .findGuardiansOfSenior(senior.getId(), ConnectionStatus.ACTIVE).stream()
-                .map(gs -> PhoneNumbers.normalize(gs.getGuardianProfile().getPhoneNumber()))
+                .findGuardiansOfSenior(senior.getId(), GuardianSeniorStatus.ACTIVE).stream()
+                .map(gs -> normalizePhone(gs.getGuardian().getPhoneNumber()))
                 .filter(Objects::nonNull)
                 .collect(Collectors.toSet());
 
         int invited = 0;
-        for (String phone : req.phoneNumbers().stream().map(PhoneNumbers::normalize).distinct().toList()) {
+        for (String rawPhone : req.phoneNumbers()) {
+            String phone = normalizePhone(rawPhone);
+            if (phone == null) continue;
+
             if (linkedPhones.contains(phone) || invitationRepository
                     .existsBySeniorProfileIdAndPhoneNumberAndStatus(senior.getId(), phone, InvitationStatus.PENDING)) {
                 continue;
             }
-            GuardianInvitation inv = invitationRepository.save(GuardianInvitation.create(senior.getId(), phone));
+            invitationRepository.save(GuardianInvitation.create(senior.getId(), phone));
             // SMS 발송 ?
             invited++;
         }
@@ -58,25 +64,30 @@ public class GuardianInvitationService {
     public AcceptInvitationResponse accept(Long accountId, AcceptInvitationRequest req) {
         GuardianInvitation inv = invitationRepository.findByToken(req.token())
                 .filter(i -> i.getStatus() == InvitationStatus.PENDING)
-                .orElseThrow(() -> new BusinessException(GuardianErrorCode.INVITATION_NOT_FOUND));
+                .orElseThrow(() -> new CustomException(GuardianErrorCode.INVITATION_NOT_FOUND));
         if (inv.isExpired()) {
-            throw new BusinessException(GuardianErrorCode.INVITATION_EXPIRED);
+            throw new CustomException(GuardianErrorCode.INVITATION_EXPIRED);
         }
 
         Profile guardian = profileRepository.findById(req.guardianProfileId())
                 .filter(p -> p.getAccount().getId().equals(accountId))   // 내 계정의 프로필만
-                .orElseThrow(() -> new BusinessException(ProfileErrorCode.PROFILE_NOT_FOUND));
+                .orElseThrow(() -> new CustomException(ProfileErrorCode.PROFILE_NOT_FOUND));
         if (guardian.getRole() != ProfileRole.GUARDIAN) {
-            throw new BusinessException(GuardianErrorCode.NOT_GUARDIAN_PROFILE);
+            throw new CustomException(GuardianErrorCode.NOT_GUARDIAN_PROFILE);
         }
         Profile senior = profileRepository.findById(inv.getSeniorProfileId())
-                .orElseThrow(() -> new BusinessException(GuardianErrorCode.INVITATION_NOT_FOUND));
+                .orElseThrow(() -> new CustomException(GuardianErrorCode.INVITATION_NOT_FOUND));
 
         if (!guardianSeniorQueryRepository.existsByGuardianProfile_IdAndSeniorProfile_Id(
                 guardian.getId(), senior.getId())) {
-            guardianSeniorQueryRepository.save(GuardianSenior.create(guardian, senior));
+            guardianSeniorQueryRepository.save(new GuardianSenior(guardian, senior));
         }
         inv.accept();
         return new AcceptInvitationResponse(senior.getId());
+    }
+
+    private String normalizePhone(String phoneNumber) {
+        if (phoneNumber == null) return null;
+        return phoneNumber.replaceAll("[^0-9]", "");
     }
 }

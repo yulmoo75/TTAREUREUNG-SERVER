@@ -36,13 +36,15 @@ public class MedicationLog {
     @Column(name = "taken_at")
     private LocalDateTime takenAt;
 
+    public MedicationLog(Medication medication, LocalDate targetDate, MealTimeSlot mealTimeSlot) {
+        this.medication = medication;
+        this.targetDate = targetDate;
+        this.mealTimeSlot = mealTimeSlot;
+        this.status = MedicationStatus.PENDING;
+    }
+
     public static MedicationLog create(Medication medication, LocalDate targetDate, MealTimeSlot mealTimeSlot) {
-        MedicationLog log = new MedicationLog();
-        log.medication = medication;
-        log.targetDate = targetDate;
-        log.mealTimeSlot = mealTimeSlot;
-        log.status = MedicationStatus.PENDING;
-        return log;
+        return new MedicationLog(medication, targetDate, mealTimeSlot);
     }
 
     public void changeStatus(MedicationStatus newStatus) {

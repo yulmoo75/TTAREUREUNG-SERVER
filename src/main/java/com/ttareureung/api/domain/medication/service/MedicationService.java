@@ -13,6 +13,7 @@ import com.ttareureung.api.domain.medication.repository.MedicationRepository;
 import com.ttareureung.api.domain.profile.entity.Profile;
 import com.ttareureung.api.domain.profile.entity.ProfileRole;
 import com.ttareureung.api.domain.profile.repository.ProfileRepository;
+import com.ttareureung.api.domain.guardian.service.SeniorAccessValidator;
 import com.ttareureung.api.global.exception.CustomException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;

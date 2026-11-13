@@ -1,5 +1,6 @@
 package com.ttareureung.api.domain.medication.service;
 
+import com.fasterxml.jackson.databind.json.JsonMapper;
 import com.ttareureung.api.domain.medication.client.AnthropicClient;
 import com.ttareureung.api.domain.medication.dto.RecognitionResponse;
 import lombok.RequiredArgsConstructor;

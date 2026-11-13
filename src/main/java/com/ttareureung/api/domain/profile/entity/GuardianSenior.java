@@ -53,10 +53,18 @@ public class GuardianSenior extends BaseTimeEntity {
     @Column(nullable = false, length = 20)
     private GuardianSeniorStatus status;
 
+    @Column(name = "is_primary", nullable = false)
+    private boolean isPrimary = false; // 대표 보호자 여부 필드 추가했습니다
+
     public GuardianSenior(Profile guardian, Profile senior) {
         this.guardian = guardian;
         this.senior = senior;
         this.status = GuardianSeniorStatus.ACTIVE;
+        this.isPrimary = false;
+    }
+
+    public void changePrimary(boolean isPrimary) {
+        this.isPrimary = isPrimary;
     }
 
     // 프로필 목록에서 "OOO 시니어 담당"처럼 상대 프로필 표시용

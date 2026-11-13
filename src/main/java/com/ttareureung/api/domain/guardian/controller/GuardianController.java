@@ -6,10 +6,7 @@ import com.ttareureung.api.domain.guardian.service.GuardianService;
 import com.ttareureung.api.global.common.BaseResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.web.bind.annotation.PatchMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/guardians")
@@ -20,21 +17,21 @@ public class GuardianController {
     private final GuardianInvitationService invitationService;
 
     @PatchMapping("/primary")
-    public BaseResponse<Void> changePrimary(@AuthenticationPrincipal Jwt jwt,
+    public BaseResponse<Void> changePrimary(@RequestParam Long accountId, // 임시 파라미터
                                             @RequestBody @Valid PrimaryGuardianRequest request) {
-        guardianService.changePrimary(AuthPrincipals.accountId(jwt), request);
+        guardianService.changePrimary(accountId, request);
         return BaseResponse.successWithoutData();
     }
 
     @PostMapping("/invitation")
-    public BaseResponse<InvitationResponse> invite(@AuthenticationPrincipal Jwt jwt,
+    public BaseResponse<InvitationResponse> invite(@RequestParam Long accountId, // 임시 파라미터
                                                    @RequestBody @Valid InvitationRequest request) {
-        return BaseResponse.success(invitationService.invite(AuthPrincipals.accountId(jwt), request));
+        return BaseResponse.success(invitationService.invite(accountId, request));
     }
 
     @PostMapping("/invitation/accept")
-    public BaseResponse<AcceptInvitationResponse> accept(@AuthenticationPrincipal Jwt jwt,
+    public BaseResponse<AcceptInvitationResponse> accept(@RequestParam Long accountId, // 임시 파라미터
                                                          @RequestBody @Valid AcceptInvitationRequest request) {
-        return BaseResponse.success(invitationService.accept(AuthPrincipals.accountId(jwt), request));
+        return BaseResponse.success(invitationService.accept(accountId, request));
     }
 }

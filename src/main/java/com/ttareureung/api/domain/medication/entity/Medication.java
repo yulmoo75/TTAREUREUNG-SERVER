@@ -84,13 +84,4 @@ public class Medication {
         if (imageUrl != null) this.imageUrl = imageUrl;
         if (notifyOnMiss != null) this.notifyOnMiss = notifyOnMiss;
     }
-
-    public static MedicationLog create(Medication medication, LocalDate date, MealTimeSlot slot) {
-        MedicationLog log = new MedicationLog();
-        log.medication = medication;
-        log.targetDate = date;
-        log.mealTimeSlot = slot;
-        log.status = MedicationStatus.PENDING;
-        return log;
-    }
 }
