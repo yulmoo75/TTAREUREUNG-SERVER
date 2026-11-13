@@ -35,9 +35,11 @@ public class MedicationService {
     private final MedicationLogRepository medicationLogRepository;
     private final MedicationRepository medicationRepository;
     private final ProfileRepository profileRepository;
+    private final SeniorAccessValidator seniorAccessValidator;
 
     @Transactional(readOnly = true)
-    public DailyScheduleResponse getDailySchedule(Long seniorId, LocalDate date) {
+    public DailyScheduleResponse getDailySchedule(Long accountId, Long seniorId, LocalDate date) {
+        seniorAccessValidator.requireSenior(accountId, seniorId);
         List<MedicationLog> logs = medicationLogRepository.findDailyLogs(seniorId, date);
 
         // enum
@@ -52,24 +54,28 @@ public class MedicationService {
     }
 
     @Transactional
-    public UpdateLogStatusResponse updateLogStatus(Long logId, MedicationStatus status) {
+    public UpdateLogStatusResponse updateLogStatus(Long accountId, Long logId, MedicationStatus status) {
         MedicationLog log = medicationLogRepository.findById(logId)
                 .orElseThrow(() -> new CustomException(MedicationErrorCode.MEDICATION_LOG_NOT_FOUND));
+
+        if (!seniorAccessValidator.hasAccess(accountId, log.getMedication().getSeniorProfileId())) {
+            throw new CustomException(MedicationErrorCode.MEDICATION_LOG_NOT_FOUND);
+        }
 
         log.changeStatus(status);
         return new UpdateLogStatusResponse(log.getId(), log.getStatus(), "복용 상태가 변경되었습니다.");
     }
 
     @Transactional
-    public MedicationCreateResponse register(MedicationCreateRequest req) {
-        validateSenior(req.seniorProfileId());
+    public MedicationCreateResponse register(Long accountId, MedicationCreateRequest req) {
+        seniorAccessValidator.requireSenior(accountId, req.seniorProfileId());
         Long id = createOne(req.seniorProfileId(), req.toItem());
         return new MedicationCreateResponse(id, "약 복용 일정이 등록되어 있습니다.");
     }
 
     @Transactional // 하나라도 실패하면 전체 롤백
-    public MedicationBulkCreateResponse registerBulk(MedicationBulkCreateRequest req) {
-        validateSenior(req.seniorProfileId());
+    public MedicationBulkCreateResponse registerBulk(Long accountId, MedicationBulkCreateRequest req) {
+        seniorAccessValidator.requireSenior(accountId, req.seniorProfileId());
         List<Long> ids = req.medications().stream()
                 .map(item -> createOne(req.seniorProfileId(), item))
                 .toList();
@@ -77,18 +83,24 @@ public class MedicationService {
     }
 
     @Transactional
-    public MedicationBulkDeleteResponse deleteMedications(List<Long> medicationIds) {
+    public MedicationBulkDeleteResponse deleteMedications(Long accountId, List<Long> medicationIds) {
         List<Long> ids = medicationIds.stream().distinct().toList();
-        if (medicationRepository.findAllById(ids).size() != ids.size()) {
+
+        List<Medication> found = medicationRepository.findAllById(ids);
+        if (found.size() != ids.size()
+                || !found.stream().map(Medication::getSeniorProfileId).distinct()
+                .allMatch(sid -> seniorAccessValidator.hasAccess(accountId, sid))) {
             throw new CustomException(MedicationErrorCode.MEDICATION_NOT_FOUND);
         }
+
         medicationLogRepository.deleteByMedicationIds(ids); // FK 때문에 로그 먼저
         medicationRepository.deleteAllByIdInBatch(ids);
         return new MedicationBulkDeleteResponse(ids.size(), ids.size() + "개의 약 복용 일정이 삭제되었습니다.");
     }
 
     @Transactional(readOnly = true)
-    public MedicationListResponse getMedications(Long seniorId) {
+    public MedicationListResponse getMedications(Long accountId, Long seniorId) {
+        seniorAccessValidator.requireSenior(accountId, seniorId);
         return new MedicationListResponse(
                 medicationRepository.findBySeniorProfileIdOrderByCreatedAtDesc(seniorId).stream()
                         .map(m -> new MedicationListResponse.MedicationItem(
@@ -98,26 +110,28 @@ public class MedicationService {
     }
 
     @Transactional
-    public MedicationUpdateResponse updateMedication(Long medicationId, MedicationUpdateRequest req) {
-        Medication m = findMedication(medicationId);
+    public MedicationUpdateResponse updateMedication(Long accountId, Long medicationId, MedicationUpdateRequest req) {
+        Medication m = findOwnedMedication(accountId, medicationId);
         m.update(req.customDrugName(), req.frequency(), req.effect(), req.imageUrl(), req.notifyOnMiss());
         return new MedicationUpdateResponse(m.getId(), "약 정보가 수정되었습니다.");
     }
 
     @Transactional
-    public void deleteMedication(Long medicationId) {
-        Medication m = findMedication(medicationId);
-        medicationLogRepository.deleteByMedicationIds(medicationId);
+    public void deleteMedication(Long accountId, Long medicationId) {
+        Medication m = findOwnedMedication(accountId, medicationId);
+        medicationLogRepository.deleteByMedicationIds(List.of(medicationId));
         medicationRepository.delete(m);
         // return 없음 (void)
     }
 
-    private void validateSenior(Long seniorProfileId) {
-        Profile senior = profileRepository.findById(seniorProfileId)
-                .orElseThrow(() -> new CustomException(MedicationErrorCode.SENIOR_NOT_FOUND));
-        if (senior.getRole() != ProfileRole.SENIOR) {
-            throw new CustomException(MedicationErrorCode.NOT_SENIOR_PROFILE);
+    // 소유권 확인
+    private Medication findOwnedMedication(Long accountId, Long medicationId) {
+        Medication m = medicationRepository.findById(medicationId)
+                .orElseThrow(() -> new CustomException(MedicationErrorCode.MEDICATION_NOT_FOUND));
+        if (!seniorAccessValidator.hasAccess(accountId, m.getSeniorProfileId())) {
+            throw new CustomException(MedicationErrorCode.MEDICATION_NOT_FOUND);
         }
+        return m;
     }
 
     private Long createOne(Long seniorProfileId, MedicationItemRequest item) {
@@ -150,11 +164,6 @@ public class MedicationService {
         }
         medicationLogRepository.saveAll(logs);
         return medication.getId();
-    }
-
-    private Medication findMedication(Long id) {
-        return medicationRepository.findById(id)
-                .orElseThrow(() -> new CustomException(MedicationErrorCode.MEDICATION_NOT_FOUND));
     }
 
     private TimeSlot toTimeSlot(MealTimeSlot slot, List<MedicationLog> logs) {

@@ -24,4 +24,9 @@ public interface MedicationLogRepository extends JpaRepository<MedicationLog, Lo
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("delete from MedicationLog l where l.medication.id in :ids")
     void deleteByMedicationIds(@Param("ids") Collection<Long> ids);
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("delete from MedicationLog l where l.medication.id in "
+            + "(select m.id from Medication m where m.seniorProfileId = :seniorId)")
+    void deleteAllBySeniorProfileId(@Param("seniorId") Long seniorId);
 }

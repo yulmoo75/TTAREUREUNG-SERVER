@@ -22,9 +22,11 @@ public class MedicationController {
 
     @GetMapping("/schedule")
     public BaseResponse<DailyScheduleResponse> getDailySchedule(
+            @AuthenticationPrincipal Jwt jwt,
             @RequestParam("senior_id") Long seniorId,
             @RequestParam("date") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
-        return BaseResponse.success(medicationService.getDailySchedule(seniorId, date));
+        return BaseResponse.success(
+                medicationService.getDailySchedule(AuthPrincipals.accountId(jwt), seniorId, date));
     }
 
     @PatchMapping("/logs/{logId}")
