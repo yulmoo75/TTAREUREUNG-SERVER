@@ -10,7 +10,7 @@ import org.springframework.http.HttpStatus;
 public enum MedicationErrorCode implements ErrorCode {
     MEDICATION_NOT_FOUND(HttpStatus.NOT_FOUND, "MEDICATION_001", "약 일정을 찾을 수 없습니다."),
     MEDICATION_LOG_NOT_FOUND(HttpStatus.NOT_FOUND, "MEDICATION_002", "복용 기록을 찾을 수 없습니다."),
-    NOT_SENIOR_PROFILE(HttpStatus.BAD_REQUEST, "MEDICATION_003", "시니어 프로필에만 약을 등록할 수 있습니다."),
+    NOT_SENIOR_PROFILE(HttpStatus.BAD_REQUEST, "MEDICATION_003", "시니어 프로필이 아닙니다."),
     INVALID_DATE_RANGE(HttpStatus.BAD_REQUEST, "MEDICATION_004", "종료일은 시작일 이후여야 합니다."),
     PERIOD_TOO_LONG(HttpStatus.BAD_REQUEST, "MEDICATION_005", "복용 기간은 최대 1년까지 등록할 수 있습니다."),
     DELETE_TARGET_EMPTY(HttpStatus.BAD_REQUEST, "MEDICATION_006", "삭제할 약을 선택해주세요."),

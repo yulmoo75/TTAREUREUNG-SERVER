@@ -1,5 +1,4 @@
-package com.ttareureung.api.domain.medication.entity;
-
+import com.ttareureung.api.domain.medication.entity.CycleType;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Builder;
@@ -35,6 +34,12 @@ public class Medication {
     @Column(columnDefinition = "TEXT")
     private String effect;
 
+    @Column(name = "storage_location", length = 100)
+    private String storageLocation;
+
+    @Column(name = "intake_reason", columnDefinition = "TEXT")
+    private String intakeReason;
+
     @Column(name = "start_date", nullable = false)
     private LocalDate startDate;
 
@@ -57,13 +62,15 @@ public class Medication {
 
     @Builder
     private Medication(Long seniorProfileId, String drugName, String customDrugName, String imageUrl,
-                       String effect, LocalDate startDate, LocalDate endDate, CycleType cycleType,
-                       String frequency, boolean notifyOnMiss) {
+                       String effect, String storageLocation, String intakeReason, LocalDate startDate,
+                       LocalDate endDate, CycleType cycleType, String frequency, boolean notifyOnMiss) {
         this.seniorProfileId = seniorProfileId;
         this.drugName = drugName;
         this.customDrugName = customDrugName;
         this.imageUrl = imageUrl;
         this.effect = effect;
+        this.storageLocation = storageLocation;
+        this.intakeReason = intakeReason;
         this.startDate = startDate;
         this.endDate = endDate;
         this.cycleType = cycleType;
@@ -75,13 +82,15 @@ public class Medication {
         return (customDrugName != null && !customDrugName.isBlank()) ? customDrugName : drugName;
     }
 
-    // null 필드 변경 x
-    public void update(String customDrugName, String frequency, String effect,
-                       String imageUrl, Boolean notifyOnMiss) {
+    /** null로 온 필드는 유지, 복용 이유는 빈 문자열이면 삭제 */
+    public void update(String customDrugName, String frequency, String effect, String imageUrl,
+                       Boolean notifyOnMiss, String storageLocation, String intakeReason) {
         if (customDrugName != null) this.customDrugName = customDrugName;
         if (frequency != null) this.frequency = frequency;
         if (effect != null) this.effect = effect;
         if (imageUrl != null) this.imageUrl = imageUrl;
         if (notifyOnMiss != null) this.notifyOnMiss = notifyOnMiss;
+        if (storageLocation != null) this.storageLocation = storageLocation;
+        if (intakeReason != null) this.intakeReason = intakeReason.isEmpty() ? null : intakeReason;
     }
 }

@@ -42,6 +42,12 @@ public class GuardianSeniorService {
             throw new CustomException(ProfileErrorCode.ALREADY_LINKED);
         }
         try {
+            // 첫 연결시 대표로 설정 추가했습니다
+            boolean firstLink = links.findAllByProfileId(senior.getId()).isEmpty();
+            GuardianSenior link = new GuardianSenior(guardian, senior);
+            if (firstLink) {
+                link.changePrimary(true);
+            }
             return GuardianSeniorResponse.from(links.saveAndFlush(new GuardianSenior(guardian, senior)));
         } catch (DataIntegrityViolationException e) {
             // 동시 요청으로 exists 확인을 통과한 경우 UNIQUE 제약(1062)에서 걸림
@@ -57,7 +63,15 @@ public class GuardianSeniorService {
         accessChecker.activeAccount(accountId);
         GuardianSenior link = links.findByIdAndAccountId(linkId, accountId)
                 .orElseThrow(() -> new CustomException(ProfileErrorCode.LINK_NOT_FOUND));
+        boolean wasPrimary = link.isPrimary();
+        Long seniorId = link.getSenior().getId();
         links.delete(link);
+        if (wasPrimary) {  // 대표가 해제시 대표 승계
+            links.findAllByProfileId(seniorId).stream()
+                    .filter(other -> !other.getId().equals(linkId))
+                    .findFirst()
+                    .ifPresent(next -> next.changePrimary(true));
+        }
     }
 
     // profileId가 없으면 계정 전체 연결, 있으면 해당 프로필이 포함된 연결만

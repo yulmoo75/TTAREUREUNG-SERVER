@@ -21,12 +21,23 @@ public interface MedicationLogRepository extends JpaRepository<MedicationLog, Lo
     List<MedicationLog> findDailyLogs(@Param("seniorId") Long seniorId,
                                       @Param("date") LocalDate date);
 
-    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Modifying(flushAutomatically = true)
     @Query("delete from MedicationLog l where l.medication.id in :ids")
     void deleteByMedicationIds(@Param("ids") Collection<Long> ids);
 
-    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Modifying(flushAutomatically = true)
     @Query("delete from MedicationLog l where l.medication.id in "
             + "(select m.id from Medication m where m.seniorProfileId = :seniorId)")
     void deleteAllBySeniorProfileId(@Param("seniorId") Long seniorId);
+
+    @Query("select distinct l.medication.id, l.mealTimeSlot from MedicationLog l where l.medication.id in :ids")
+    List<Object[]> findSlotsByMedicationIds(@Param("ids") Collection<Long> ids);
+
+    @Query("""
+        select l from MedicationLog l join fetch l.medication m
+        where m.seniorProfileId = :seniorId and l.targetDate between :from and :to
+        order by l.targetDate
+        """)
+    List<MedicationLog> findMonthlyLogs(@Param("seniorId") Long seniorId,
+                                        @Param("from") LocalDate from, @Param("to") LocalDate to);
 }

@@ -1,7 +1,7 @@
 package com.ttareureung.api.domain.medication.service;
 
 import com.fasterxml.jackson.databind.json.JsonMapper;
-import com.ttareureung.api.domain.medication.client.AnthropicClient;
+import com.ttareureung.api.domain.medication.client.AiFileClient;
 import com.ttareureung.api.domain.medication.dto.RecognitionResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -32,7 +32,7 @@ public class MedicationRecognitionService {
             형식: {"medications":[{"drug_name":"","effect":"","frequency":"","meal_time_slots":[],"confidence":0}]}
             """;
 
-    private final AnthropicClient anthropicClient;
+    private final AiFileClient aiFileClient;
     private final JsonMapper jsonMapper; // Boot 4는 Jackson 3: tools.jackson.databind.json.JsonMapper
 
     public RecognitionResponse recognize(MultipartFile file) {
@@ -43,7 +43,7 @@ public class MedicationRecognitionService {
 
         String raw;
         try {
-            raw = anthropicClient.askWithFile(SYSTEM_PROMPT, mediaType, file.getBytes(),
+            raw = aiFileClient.askWithFile(SYSTEM_PROMPT, mediaType, file.getBytes(),
                     "이 파일에서 복약 정보를 추출해줘.");
         } catch (Exception e) {
             log.error("AI 인식 호출 실패", e);

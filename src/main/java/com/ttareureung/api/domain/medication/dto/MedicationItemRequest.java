@@ -16,6 +16,8 @@ public record MedicationItemRequest(
         @JsonProperty("custom_drug_name") @Size(max = 100) String customDrugName,
         @JsonProperty("image_url") @Size(max = 255) String imageUrl,
         String effect,
+        @JsonProperty("storage_location") @NotBlank @Size(max = 100) String storageLocation,
+        @JsonProperty("intake_reason") @Size(max = 1000) String intakeReason,
         @JsonProperty("start_date") @NotNull LocalDate startDate,
         @JsonProperty("end_date") @NotNull LocalDate endDate,
         @JsonProperty("cycle_type") @NotNull CycleType cycleType,

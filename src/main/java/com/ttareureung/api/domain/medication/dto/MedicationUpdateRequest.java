@@ -8,7 +8,9 @@ public record MedicationUpdateRequest(
         @Size(max = 100) String frequency,
         String effect,
         @JsonProperty("image_url") @Size(max = 255) String imageUrl,
-        @JsonProperty("notify_on_miss") Boolean notifyOnMiss
+        @JsonProperty("notify_on_miss") Boolean notifyOnMiss,
+        @JsonProperty("storage_location") @Pattern(regexp = ".*\\S.*") @Size(max = 100) String storageLocation,
+        @JsonProperty("intake_reason") @Size(max = 1000) String intakeReason
 ) {
-
+    
 }
